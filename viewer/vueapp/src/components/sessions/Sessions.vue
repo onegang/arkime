@@ -136,7 +136,8 @@
                     <b-dropdown-header
                       :key="key"
                       v-if="group.length"
-                      class="group-header">
+                      class="group-header"
+                      @click.stop.prevent="toggleGroupVis(key, group)">
                       {{ key }}
                     </b-dropdown-header>
                     <template v-for="(field, k) in group">
@@ -1125,6 +1126,53 @@ export default {
 
       this.mapHeadersToFields();
 
+      this.saveTableState();
+
+      if (reloadData) { // need data from the server
+        this.cancelAndLoad(true, true);
+      } else { // have all the data, just need to reload the table
+        this.reloadTable();
+      }
+    },
+    /**
+     * CHANGED
+     * Toggles the visibility of a all columns of a group
+     * @param {string} groupId   The id of the group to toggle
+     * @param {string} group The grouped columns
+     */
+    toggleGroupVis: function (groupId, group) {
+      let reloadData = false;
+
+      // check if hide all or show all (hide all if all columns are shown, else show all)
+      let show = false;
+      for (const col in group) {
+        const id = group[col].dbField;
+        const index = this.isColVisible(id);
+        if (index < 0) { // it's hidden
+          show = true;
+          break;
+        }
+      }
+
+      for (const col in group) {
+        const id = group[col].dbField;
+        const index = this.isColVisible(id);
+
+        if (index >= 0) { // it's visible
+          // remove it from the visible headers list
+          if (!show) {
+            this.tableState.visibleHeaders.splice(index, 1);
+          }
+        } else { // it's hidden
+          if (show) {
+            reloadData = true; // requires a data reload
+            // add it to the visible headers list
+            this.tableState.visibleHeaders.push(id);
+          }
+        }
+      }
+
+      this.mapHeadersToFields();
       this.saveTableState();
 
       if (reloadData) { // need data from the server
